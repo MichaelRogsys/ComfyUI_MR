@@ -479,16 +479,10 @@ except:
 SUPPORT_FP8_OPS = args.supports_fp8_compute
 
 AMD_RDNA2_AND_OLDER_ARCH = ["gfx1030", "gfx1031", "gfx1032", "gfx1033", "gfx1034", "gfx1035", "gfx1036", "gfx1010", "gfx1011", "gfx1012", "gfx906", "gfx900", "gfx803"]
-AMD_ENABLE_MIOPEN_ENV = 'COMFYUI_ENABLE_MIOPEN'
 
 try:
     if is_amd():
         arch = torch.cuda.get_device_properties(get_torch_device()).gcnArchName.split(':')[0]
-        if not (any((a in arch) for a in AMD_RDNA2_AND_OLDER_ARCH)):
-            if os.getenv(AMD_ENABLE_MIOPEN_ENV) != '1':
-                torch.backends.cudnn.enabled = False  # Seems to improve things a lot on AMD
-                logging.info("Set: torch.backends.cudnn.enabled = False for better AMD performance.")
-
         try:
             rocm_version = tuple(map(int, str(torch.version.hip).split(".")[:2]))
         except:
@@ -528,6 +522,10 @@ try:
 
         logging.info("AMD arch: {}".format(arch))
         logging.info("ROCm version: {}".format(rocm_version))
+
+        os.environ.setdefault('MIOPEN_FIND_MODE', "FAST")
+        os.environ.setdefault('PYTORCH_MIOPEN_SUGGEST_NHWC', "0")
+
         if args.use_split_cross_attention == False and args.use_quad_cross_attention == False:
             if aotriton_supported():  # AMD efficient attention implementation depends on aotriton.
                 if torch_version_numeric >= (2, 7):  # works on 2.6 but doesn't actually seem to improve much
